@@ -122,9 +122,47 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-slate-950 text-foreground;
   }
   html {
     @apply font-sans;
   }
+}
+
+/* Glassmorphism & Neon Design System */
+.bg-glass {
+  background: rgba(11, 14, 20, 0.65) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.text-neon-cyan {
+  color: #00F2FF !important;
+}
+
+.bg-neon-cyan {
+  background-color: #00F2FF !important;
+}
+
+.border-neon-cyan {
+  border-color: #00F2FF !important;
+}
+
+.text-neon-magenta {
+  color: #FF007A !important;
+}
+
+.bg-neon-magenta {
+  background-color: #FF007A !important;
+}
+
+.glow-cyan {
+  box-shadow: 0 0 15px rgba(0, 242, 255, 0.25) !important;
+}
+
+.glow-cyan-hover:hover {
+  box-shadow: 0 0 20px rgba(0, 242, 255, 0.45) !important;
+  border-color: #00F2FF !important;
+  transition: all 0.3s ease;
 }

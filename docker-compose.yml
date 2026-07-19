@@ -8,24 +8,25 @@ services:
     ports:
       - "5432:5432"
 
-  cache:
+  redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
 
   api:
     build:
-      context: ./backend             # Pointed to the backend folder
-      dockerfile: ../docker/Dockerfile.backend # Path adjusted
+      context: ./backend
+      dockerfile: ../docker/Dockerfile.backend
     volumes:
       - ./backend:/app
     ports:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://user:password@db:5432/aerotech_db
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       - db
-      - cache
+      - redis
 
   web:
     build:
@@ -40,3 +41,17 @@ services:
       - "3000:3000"
     depends_on:
       - api
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: ../docker/Dockerfile.backend
+    command: celery -A app.worker worker --loglevel=info
+    depends_on:
+      - redis
+      - db
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://user:password@db:5432/aerotech_db
+      - REDIS_URL=redis://redis:6379/0

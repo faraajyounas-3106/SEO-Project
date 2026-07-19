@@ -1,5 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from app.db.session import AsyncSessionLocal
+from app.api.v1.audits import router as audits_router
 
 app = FastAPI(title="AeroTech SEO Suite")
 
@@ -12,6 +15,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Register API Routers
+app.include_router(audits_router, prefix="/api/v1")
+
 @app.get("/health")
 async def health_check():
-    return {"status": "online", "message": "API Connected"}
+    db_status = "offline"
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+        db_status = "online"
+    except Exception as e:
+        # In a real environment, you'd log this properly. We log to stderr/stdout.
+        print(f"Database connection verification failed: {e}")
+
+    if db_status == "online":
+        return {"status": "online", "message": "API and Database Connected"}
+    else:
+        return {"status": "error", "message": "API Connected, Database Offline"}

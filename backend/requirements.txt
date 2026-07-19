@@ -6,3 +6,7 @@ pydantic-settings
 alembic
 httpx
 beautifulsoup4
+celery
+redis
+requests
+google-generativeai
