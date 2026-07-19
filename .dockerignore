@@ -1,0 +1,9 @@
+# Ignore everything that isn't source code
+node_modules
+.next
+.git
+.env
+dist
+build
+*.log
+npm-debug.log
