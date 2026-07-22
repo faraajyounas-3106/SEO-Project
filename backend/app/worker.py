@@ -7,8 +7,16 @@ from app.services.audit import AuditService
 from app.services.pagespeed import PageSpeedService
 from sqlalchemy import update, select
 
+# Safely append protocol=2 option to Redis connection URL to prevent HELLO command errors
+broker_url = settings.REDIS_URL
+backend_url = settings.REDIS_URL
+if broker_url.startswith("redis://") and "protocol=" not in broker_url:
+    broker_url += "&protocol=2" if "?" in broker_url else "?protocol=2"
+if backend_url.startswith("redis://") and "protocol=" not in backend_url:
+    backend_url += "&protocol=2" if "?" in backend_url else "?protocol=2"
+
 # Initialize Celery Application
-celery_app = Celery("tasks", broker=settings.REDIS_URL, backend=settings.REDIS_URL)
+celery_app = Celery("tasks", broker=broker_url, backend=backend_url)
 
 celery_app.conf.update(
     task_serializer="json",
