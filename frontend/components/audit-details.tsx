@@ -55,22 +55,24 @@ export function AuditDetails({ projectId }: AuditDetailsProps) {
 
   const fetchProjectData = async () => {
     try {
+      const apiHost = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
+      
       // 1. Fetch audits history
-      const historyRes = await fetch(`http://localhost:8000/api/v1/projects/${projectId}/audits`);
+      const historyRes = await fetch(`http://${apiHost}:8000/api/v1/projects/${projectId}/audits`);
       if (historyRes.ok) {
         const history = await historyRes.json();
         setHistoryData(history);
       }
 
       // 2. Fetch optimizations
-      const optRes = await fetch(`http://localhost:8000/api/v1/projects/${projectId}/optimizations`);
+      const optRes = await fetch(`http://${apiHost}:8000/api/v1/projects/${projectId}/optimizations`);
       if (optRes.ok) {
         const opts = await optRes.json();
         setOptimizations(opts);
       }
 
       // Get latest metrics to update cards
-      const projListRes = await fetch('http://localhost:8000/api/v1/projects');
+      const projListRes = await fetch(`http://${apiHost}:8000/api/v1/projects`);
       if (projListRes.ok) {
         const list = await projListRes.json();
         const currentProject = list.find((p: any) => p.id === projectId);
@@ -98,7 +100,8 @@ export function AuditDetails({ projectId }: AuditDetailsProps) {
   const handleRunAudit = async () => {
     try {
       setSuccessMessage(null);
-      const response = await fetch('http://localhost:8000/api/v1/audits', {
+      const apiHost = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
+      const response = await fetch(`http://${apiHost}:8000/api/v1/audits`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -123,7 +126,8 @@ export function AuditDetails({ projectId }: AuditDetailsProps) {
 
   const handleApplyOpt = async (optId: string, targetStatus: 'applied' | 'skipped') => {
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/optimizations/${optId}`, {
+      const apiHost = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
+      const res = await fetch(`http://${apiHost}:8000/api/v1/optimizations/${optId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

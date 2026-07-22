@@ -21,7 +21,8 @@ export function useAudit(taskId: string | null, onComplete?: () => void) {
 
     const checkStatus = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/v1/audits/${taskId}/status`);
+        const apiHost = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
+        const res = await fetch(`http://${apiHost}:8000/api/v1/audits/${taskId}/status`);
         if (!res.ok) {
           throw new Error('Failed to fetch status');
         }

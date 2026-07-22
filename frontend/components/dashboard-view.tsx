@@ -27,7 +27,8 @@ export function DashboardView({ onSelectProject, setCurrentTab }: DashboardViewP
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:8000/api/v1/projects');
+      const apiHost = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
+      const res = await fetch(`http://${apiHost}:8000/api/v1/projects`);
       if (res.ok) {
         const data = await res.json();
         setProjects(data);
@@ -48,7 +49,8 @@ export function DashboardView({ onSelectProject, setCurrentTab }: DashboardViewP
     if (!newProjectUrl) return;
 
     try {
-      const res = await fetch('http://localhost:8000/api/v1/projects', {
+      const apiHost = typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1';
+      const res = await fetch(`http://${apiHost}:8000/api/v1/projects`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
