@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GlassCard } from './ui/glass-card';
-import { ArrowRight, Plus, Search, ExternalLink } from 'lucide-react';
+import { ArrowRight, Plus, Search, ExternalLink, X } from 'lucide-react';
 
 interface Project {
   id: string;
   name: string;
-  url: string;
-  score: number;
-  status: 'active' | 'queued' | 'error';
-  lastAudit: string;
+  domain_url: string;
+  latest_score: number | null;
+  status: string;
+  latest_audit_date: string | null;
 }
 
 interface DashboardViewProps {
@@ -18,38 +18,72 @@ interface DashboardViewProps {
 
 export function DashboardView({ onSelectProject, setCurrentTab }: DashboardViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  
-  const [projects] = useState<Project[]>([
-    {
-      id: 'f87a8b3e-e24c-4c60-84e9-270830db9df2',
-      name: 'Newstigo Portal',
-      url: 'https://newstigo.com',
-      score: 94,
-      status: 'active',
-      lastAudit: '2026-07-19',
-    },
-    {
-      id: '3b2d6a5d-4f7b-40fa-ba41-d8a4f6b216c8',
-      name: 'Tech Blog Pro',
-      url: 'https://techblogpro.io',
-      score: 88,
-      status: 'active',
-      lastAudit: '2026-07-18',
-    },
-    {
-      id: '8a8b2c4d-612a-4b7b-891a-f12a3d4e5f6a',
-      name: 'E-Commerce Hub',
-      url: 'https://myshophub.com',
-      score: 72,
-      status: 'error',
-      lastAudit: '2026-07-15',
-    },
-  ]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newProjectUrl, setNewProjectUrl] = useState('');
+  const [newProjectName, setNewProjectName] = useState('');
+
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('http://localhost:8000/api/v1/projects');
+      if (res.ok) {
+        const data = await res.json();
+        setProjects(data);
+      }
+    } catch (err) {
+      console.error('Error fetching projects:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const handleAddProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProjectUrl) return;
+
+    try {
+      const res = await fetch('http://localhost:8000/api/v1/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newProjectName || 'New Project',
+          domain_url: newProjectUrl,
+        }),
+      });
+
+      if (res.ok) {
+        setIsModalOpen(false);
+        setNewProjectUrl('');
+        setNewProjectName('');
+        fetchProjects(); // Refresh project list
+      } else {
+        const errorData = await res.json();
+        alert(`Error: ${errorData.detail || 'Failed to create project'}`);
+      }
+    } catch (err) {
+      alert('Error connecting to backend database.');
+    }
+  };
 
   const filteredProjects = projects.filter((p) =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.url.toLowerCase().includes(searchTerm.toLowerCase())
+    (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.domain_url.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const averageScore = projects.length
+    ? Math.round(
+        projects.reduce((acc, curr) => acc + (curr.latest_score || 0), 0) /
+          projects.filter((p) => p.latest_score !== null).length || 0
+      )
+    : 0;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -63,7 +97,10 @@ export function DashboardView({ onSelectProject, setCurrentTab }: DashboardViewP
             Monitor technical core web vitals and run automated SEO audits.
           </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-lg font-medium shadow-[0_0_15px_rgba(0,242,255,0.3)] transition-all duration-300 transform hover:scale-[1.02]">
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-lg font-medium shadow-[0_0_15px_rgba(0,242,255,0.3)] transition-all duration-300 transform hover:scale-[1.02]"
+        >
           <Plus className="h-5 w-5" />
           Add Project
         </button>
@@ -77,7 +114,7 @@ export function DashboardView({ onSelectProject, setCurrentTab }: DashboardViewP
         </GlassCard>
         <GlassCard hoverGlow>
           <p className="text-sm font-semibold text-slate-400">Average SEO Score</p>
-          <p className="text-4xl font-extrabold text-neon-cyan mt-2">84.6%</p>
+          <p className="text-4xl font-extrabold text-neon-cyan mt-2">{averageScore || '--'}%</p>
         </GlassCard>
         <GlassCard hoverGlow>
           <p className="text-sm font-semibold text-slate-400">API Health Status</p>
@@ -103,85 +140,155 @@ export function DashboardView({ onSelectProject, setCurrentTab }: DashboardViewP
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredProjects.map((project) => (
-            <GlassCard
-              key={project.id}
-              hoverGlow
-              onClick={() => {
-                onSelectProject(project.id);
-                setCurrentTab('audits');
-              }}
-              className="cursor-pointer group flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-xl font-bold text-white group-hover:text-neon-cyan transition-colors">
-                      {project.name}
-                    </h3>
-                    <a
-                      href={project.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-sm text-slate-400 flex items-center gap-1 mt-1 hover:text-white"
+        {loading ? (
+          <div className="text-center py-20 text-slate-400 animate-pulse">
+            Connecting to PostgreSQL database...
+          </div>
+        ) : filteredProjects.length === 0 ? (
+          <div className="text-center py-20 text-slate-500 border border-white/5 rounded-2xl bg-white/5">
+            No projects found. Click "Add Project" to register your first domain.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {filteredProjects.map((project) => (
+              <GlassCard
+                key={project.id}
+                hoverGlow
+                onClick={() => {
+                  onSelectProject(project.id);
+                  setCurrentTab('audits');
+                }}
+                className="cursor-pointer group flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-xl font-bold text-white group-hover:text-neon-cyan transition-colors">
+                        {project.name || 'Project'}
+                      </h3>
+                      <a
+                        href={project.domain_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-sm text-slate-400 flex items-center gap-1 mt-1 hover:text-white"
+                      >
+                        {project.domain_url} <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                    
+                    {/* Gauge score circle */}
+                    <div className="relative flex items-center justify-center">
+                      <svg className="w-16 h-16 transform -rotate-90">
+                        <circle
+                          cx="32"
+                          cy="32"
+                          r="26"
+                          stroke="rgba(255,255,255,0.05)"
+                          strokeWidth="4"
+                          fill="transparent"
+                        />
+                        <circle
+                          cx="32"
+                          cy="32"
+                          r="26"
+                          stroke={
+                            project.latest_score && project.latest_score > 80
+                              ? "#00F2FF"
+                              : project.latest_score && project.latest_score > 60
+                              ? "#EAB308"
+                              : "#FF007A"
+                          }
+                          strokeWidth="4"
+                          fill="transparent"
+                          strokeDasharray={163.3}
+                          strokeDashoffset={
+                            163.3 - (163.3 * (project.latest_score || 0)) / 100
+                          }
+                          className="transition-all duration-1000 ease-out"
+                        />
+                      </svg>
+                      <span className="absolute text-xs font-bold text-white">
+                        {project.latest_score !== null ? project.latest_score : '--'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex items-center gap-3">
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        project.status === 'active'
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : project.status === 'queued'
+                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                      }`}
                     >
-                      {project.url} <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                  
-                  {/* Gauge score circle */}
-                  <div className="relative flex items-center justify-center">
-                    <svg className="w-16 h-16 transform -rotate-90">
-                      <circle
-                        cx="32"
-                        cy="32"
-                        r="26"
-                        stroke="rgba(255,255,255,0.05)"
-                        strokeWidth="4"
-                        fill="transparent"
-                      />
-                      <circle
-                        cx="32"
-                        cy="32"
-                        r="26"
-                        stroke={project.score > 80 ? "#00F2FF" : project.score > 60 ? "#EAB308" : "#FF007A"}
-                        strokeWidth="4"
-                        fill="transparent"
-                        strokeDasharray={163.3}
-                        strokeDashoffset={163.3 - (163.3 * project.score) / 100}
-                        className="transition-all duration-1000 ease-out"
-                      />
-                    </svg>
-                    <span className="absolute text-xs font-bold text-white">{project.score}</span>
+                      {project.status.toUpperCase()}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      Last scanned: {project.latest_audit_date || 'Never'}
+                    </span>
                   </div>
                 </div>
 
-                <div className="mt-6 flex items-center gap-3">
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                      project.status === 'active'
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        : project.status === 'queued'
-                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                        : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                    }`}
-                  >
-                    {project.status.toUpperCase()}
-                  </span>
-                  <span className="text-xs text-slate-500">Last scanned: {project.lastAudit}</span>
+                <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between text-neon-cyan text-sm font-semibold group-hover:translate-x-1 transition-transform">
+                  <span>View Full Audit Details</span>
+                  <ArrowRight className="h-4 w-4" />
                 </div>
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between text-neon-cyan text-sm font-semibold group-hover:translate-x-1 transition-transform">
-                <span>View Full Audit Details</span>
-                <ArrowRight className="h-4 w-4" />
-              </div>
-            </GlassCard>
-          ))}
-        </div>
+              </GlassCard>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Add Project Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+          <GlassCard className="w-full max-w-md border border-neon-cyan/20 p-6 relative">
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <h2 className="text-2xl font-bold text-white mb-6">Add New Project</h2>
+
+            <form onSubmit={handleAddProject} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-400 mb-2">
+                  Project Domain URL
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://example.com"
+                  value={newProjectUrl}
+                  onChange={(e) => setNewProjectUrl(e.target.value)}
+                  required
+                  className="w-full bg-slate-900 border border-white/10 rounded-lg p-3 text-white placeholder-slate-600 focus:outline-none focus:border-neon-cyan"
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 py-3 border border-white/10 rounded-lg text-slate-300 hover:bg-white/5 transition-all text-sm font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white rounded-lg text-sm font-bold shadow-[0_0_15px_rgba(0,242,255,0.3)] transition-all"
+                >
+                  Create Project
+                </button>
+              </div>
+            </form>
+          </GlassCard>
+        </div>
+      )}
     </div>
   );
 }

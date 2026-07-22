@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from app.db.session import AsyncSessionLocal
 from app.api.v1.audits import router as audits_router
+from app.api.v1.projects import router as projects_router
+from app.api.v1.optimizations import router as optimizations_router
 
 app = FastAPI(title="AeroTech SEO Suite")
 
@@ -17,6 +19,8 @@ app.add_middleware(
 
 # Register API Routers
 app.include_router(audits_router, prefix="/api/v1")
+app.include_router(projects_router, prefix="/api/v1")
+app.include_router(optimizations_router, prefix="/api/v1")
 
 @app.get("/health")
 async def health_check():
